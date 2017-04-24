@@ -1,0 +1,167 @@
+#!/bin/bash
+
+# Empezamos a contar el tiempo
+date0=$(date +"%s")
+
+# Comprobamos que no haya otra tarea en proceso
+numdirs=$(ls -l /media/luis/ADATA/progress | grep ^d | wc -l)
+numfiles=$(ls -l /media/luis/ADATA/progress | grep ^- | wc -l)
+if [[ $numdirs != 0 || $numfiles != 0 ]]; then 
+    #echo "Work already in progress"
+    exit 1
+fi
+
+# Comprobamos que se han pasado argumentos y que el argumento es un directorio
+if [[ $# -eq 0 || ! -d "$1" ]]; then
+    #echo "Bad arguments"
+    exit 1
+fi
+
+# Comprobamos que hay exactamente 3 ficheros en el directorio
+files=($1/*)
+numfiles=${#files[@]}
+if [[ $numfiles != 3 ]]; then
+    #echo "Bad number of files"
+    exit 1
+fi
+
+# Comprobamos que existen los tres ficheros que tenian que estar
+unique=$(echo $1 | awk 'BEGIN { FS = "/" } ; { print $NF }')
+if [[ ! -f "$1/$unique.req" || ! -f "$1/R_1.fastq.gz" || ! -f "$1/R_2.fastq.gz" ]]; then
+    #echo "Bad file names"
+    exit 1
+fi
+
+# Leemos los campos del fichero 
+read unique email name <<< $(< $1/$unique.req)
+
+# Descomprimimos el primer fichero
+gzip -f -d $1/R_1.fastq.gz
+# Podemos ver si R_1.fastq tiene @ como primer caracter de linea 1, A|T|C|G|N como 1c de 2l y + como 1c de 3l
+l1=$(head -1 $1/R_1.fastq)
+l2=$(head -2 $1/R_1.fastq | tail -1)
+l3=$(head -3 $1/R_1.fastq | tail -1)
+if [ ${l1:0:1} != "@" ] || [[ ! "ATCGN" =~ ${l2:0:1} ]] || [ ${l3:0:1} != "+" ]
+then
+    /home/luis/bin/senderrormail.py $email $name "Data seems not to be in fastq format"
+    /home/luis/bin/senderrormail.py "LuisVielva@gmail.com" $name "Data seems not to be in fastq format"
+    rm -rf $1
+    exit 1
+fi
+
+# Descomprimimos el segundo fichero
+gzip -f -d $1/R_2.fastq.gz
+# Podemos ver si R_1.fastq tiene @ como primer caracter de linea 1, A|T|C|G|N como 1c de 2l y + como 1c de 3l
+l1=$(head -1 $1/R_2.fastq)
+l2=$(head -2 $1/R_2.fastq | tail -1)
+l3=$(head -3 $1/R_2.fastq | tail -1)
+if [ ${l1:0:1} != "@" ] || [[ ! "ATCGN" =~ ${l2:0:1} ]] || [ ${l3:0:1} != "+" ]
+then
+    /home/luis/bin/senderrormail.py $email $name "Data seems not to be in fastq format"
+    /home/luis/bin/senderrormail.py "LuisVielva@gmail.com" $name "Data seems not to be in fastq format"
+    rm -rf $1
+    exit 1
+fi
+
+# Movemos la carpeta al directorio progress
+mv $1 /media/luis/ADATA/progress
+
+# Cambiamos al directorio
+cd "/media/luis/ADATA/progress/$unique"
+
+# Obtenemos longitud de los reads
+READLENGTH="$(cat R_1.fastq | head -2 | tail -1 | wc -c)"
+echo "READLENGTH:" $READLENGTH
+
+# Barajando secuencias
+# shuffleSequences_fastq.pl R_1.fastq R_2.fastq R_all.fastq
+    
+# Ensamblado
+VelvetOptimiser.pl --t 70 --s $(($READLENGTH-32)) --e $READLENGTH --x 4 --d optim -f '-fastq -shortPaired -separate R_1.fastq R_2.fastq'
+
+# Vamos al directorio optimo
+cd optim    
+    
+# Obtenemos la longitud del insert
+FLANK="$(grep "Paired-end library 1 has length" *_Logfile.txt | head -1 | awk '{print $6}' | sed 's/,//')"
+INSERT=$(($FLANK - 2*$READLENGTH))
+echo "Flank, Insert:", $FLANK, $INSERT
+     
+# Creando index
+bowtie2-build contigs.fa reference.index
+echo "bowtie2-build"
+    
+# Bowtie para generar mapping.sam Eliminamos directamente las lineas de cabecera y las que tienen "="
+bowtie2 -1 ../R_1.fastq -2 ../R_2.fastq -x reference.index --no-head -p 70 -a | awk '$7!="=" {print $line}' > mapping.sam
+echo "bowtie2"
+
+# Placnet:
+# 
+blastn -query contigs.fa -db /media/luis/ADATA/BD/all_ncbi.fna -out tmpMegaBlast.txt -num_alignments 0 -evalue 1e-25 -num_threads 70
+echo "blastn"
+
+# 
+blastRefDB.pl tmpMegaBlast.txt > blastRefDB.csv
+
+#
+sam2scaffold.pl mapping.sam contigs.fa $FLANK 200 > sam2scaffold.csv
+
+#
+cat blastRefDB.csv sam2scaffold.csv > red.csv
+cp red.csv red0.csv
+
+# Prodigal
+prodigal -a placnet.prod.faa -d placnet.prod.cds -i contigs.fa  -p meta -o prodigal.log
+
+# 
+blastp -query placnet.prod.faa -db /media/luis/ADATA/BD/REL-DB.faa -outfmt 6 -evalue 1e-50 -out tmpREL.blast -num_alignments 1 -num_threads 70
+blastp -query placnet.prod.faa -db /media/luis/ADATA/BD/RIP-DB.faa -outfmt 6 -evalue 1e-50 -out tmpRIP.blast -num_alignments 1 -num_threads 70
+blastn -query contigs.fa       -db /media/luis/ADATA/BD/INC-DB.fna -outfmt 6 -evalue 1e-50 -out tmpInc.blast -num_alignments 1 -num_threads 70
+
+# 
+awk '{split($1, a1, /\_/); print a1[1] "_" a1[2] "_" a1[3] "_" a1[4] "_" a1[5] "_" a1[6] "\t" $2 "\t" $3}' tmpREL.blast > rel.csv
+awk '{split($1, a1, /\_/); print a1[1] "_" a1[2] "_" a1[3] "_" a1[4] "_" a1[5] "_" a1[6] "\t" $2 "\t" $3}' tmpRIP.blast > rip.csv
+awk '{print $1 "\t" $2 "\t"$3}' tmpInc.blast > inc.csv
+
+# Dividimos el fichero contigs.fa en un fichero por cada nodo
+fastasplit.py
+
+# Generamos los html con la informacion adicional y el fichero reference.csv
+# a partir del fichero blastRefDB.csv que contiene lineas como la siguiente:
+# NODE_1_length_6166_cov_38.304737	hit	gi|690030267|ref|NC_025100.1|	11531	0.0
+#
+# Para cada html hacemos una llamada como
+# contigInReferenceInfo NODE_1 NC_022648
+# 
+# y para reference.csv hacemos head -1 ~/fna/$ref.fna | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}'
+rm -f reference.csv
+while read in
+do
+    node=$(echo "$in" | awk '{split($1, a1, /\_/); print a1[1] "_" a1[2];}')
+    ref=$(echo "$in" | awk '{split($3, a3, /\|/); print a3[4];}' | awk '{split($1, a1, /\./); print a1[1];}' )
+    hdr=$(head -1 /media/luis/ADATA/fna/$ref.fna | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}')
+    echo -e "$ref\t$hdr" >> reference.csv
+    cmd="/home/luis/bin/contigInReferenceInfo $node $ref"
+    $cmd &
+done < blastRefDB.csv
+wait
+
+# Construimos
+
+# Tiempo total
+date1=$(date +"%s"); diff=$(($date1-$date0)); echo "$(($diff / 60)):$(($diff % 60))" > go.log
+
+# Copiamos todo lo necesario a la www
+cp ../*.req .
+directorio="/media/luis/ADATA/uploads/$unique"
+mkdir $directorio
+chmod 777 $directorio
+mv NODE_* reference.csv red0.csv ???.csv *.req go.log placnet.prod.* tmp*.blast *Logfile.txt $directorio
+chmod 777 $directorio/*
+sendmail.py "LuisVielva@gmail.com" $name $unique
+#sendmail.py "mdtorohernando@gmail.com" $name $unique
+sendmail.py $email $name $unique
+
+# Limpiamos
+cd /media/luis/ADATA
+rm -rf /media/luis/ADATA/progress/$unique
