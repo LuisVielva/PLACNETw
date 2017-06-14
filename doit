@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Empezamos a contar el tiempo
+# Start to count time
 date0=$(date +"%s")
 
-# Comprobamos que no haya otra tarea en proceso
+# Check there is no other PLACNETw task in progress
 numdirs=$(ls -l /media/luis/ADATA/progress | grep ^d | wc -l)
 numfiles=$(ls -l /media/luis/ADATA/progress | grep ^- | wc -l)
 if [[ $numdirs != 0 || $numfiles != 0 ]]; then 
@@ -11,13 +11,13 @@ if [[ $numdirs != 0 || $numfiles != 0 ]]; then
     exit 1
 fi
 
-# Comprobamos que se han pasado argumentos y que el argumento es un directorio
+# Check that arguments have been provided to the script and that the argument is a directory
 if [[ $# -eq 0 || ! -d "$1" ]]; then
     #echo "Bad arguments"
     exit 1
 fi
 
-# Comprobamos que hay exactamente 3 ficheros en el directorio
+# Check there are exactly three files in the directory
 files=($1/*)
 numfiles=${#files[@]}
 if [[ $numfiles != 3 ]]; then
@@ -25,19 +25,19 @@ if [[ $numfiles != 3 ]]; then
     exit 1
 fi
 
-# Comprobamos que existen los tres ficheros que tenian que estar
+# Check that the those files are the expected ones
 unique=$(echo $1 | awk 'BEGIN { FS = "/" } ; { print $NF }')
 if [[ ! -f "$1/$unique.req" || ! -f "$1/R_1.fastq.gz" || ! -f "$1/R_2.fastq.gz" ]]; then
     #echo "Bad file names"
     exit 1
 fi
 
-# Leemos los campos del fichero 
+# Read the fields from the request file
 read unique email name <<< $(< $1/$unique.req)
 
-# Descomprimimos el primer fichero
+# Uncompress the first read file
 gzip -f -d $1/R_1.fastq.gz
-# Podemos ver si R_1.fastq tiene @ como primer caracter de linea 1, A|T|C|G|N como 1c de 2l y + como 1c de 3l
+# Check R_1.fastq has @ as the first character of the first line, A|T|C|G|N as the 1st of 2nd line, and + as 1st of 3rd line
 l1=$(head -1 $1/R_1.fastq)
 l2=$(head -2 $1/R_1.fastq | tail -1)
 l3=$(head -3 $1/R_1.fastq | tail -1)
@@ -49,9 +49,9 @@ then
     exit 1
 fi
 
-# Descomprimimos el segundo fichero
+# Uncompress the second read file
 gzip -f -d $1/R_2.fastq.gz
-# Podemos ver si R_1.fastq tiene @ como primer caracter de linea 1, A|T|C|G|N como 1c de 2l y + como 1c de 3l
+# Check R_2.fastq has @ as the first character of the first line, A|T|C|G|N as the 1st of 2nd line, and + as 1st of 3rd line
 l1=$(head -1 $1/R_2.fastq)
 l2=$(head -2 $1/R_2.fastq | tail -1)
 l3=$(head -3 $1/R_2.fastq | tail -1)
@@ -63,35 +63,36 @@ then
     exit 1
 fi
 
-# Movemos la carpeta al directorio progress
+# Move the folder to the 'progress' directory
 mv $1 /media/luis/ADATA/progress
 
-# Cambiamos al directorio
+# Change the current working directory
 cd "/media/luis/ADATA/progress/$unique"
 
-# Obtenemos longitud de los reads
+# Get reads length
 READLENGTH="$(cat R_1.fastq | head -2 | tail -1 | wc -c)"
 echo "READLENGTH:" $READLENGTH
 
-# Barajando secuencias
+# Shuffle the sequences
 # shuffleSequences_fastq.pl R_1.fastq R_2.fastq R_all.fastq
     
-# Ensamblado
+# Perform the assembly
 VelvetOptimiser.pl --t 70 --s $(($READLENGTH-32)) --e $READLENGTH --x 4 --d optim -f '-fastq -shortPaired -separate R_1.fastq R_2.fastq'
 
-# Vamos al directorio optimo
+# Change to the directory with the optimal solution
 cd optim    
     
-# Obtenemos la longitud del insert
+# Get insert length
 FLANK="$(grep "Paired-end library 1 has length" *_Logfile.txt | head -1 | awk '{print $6}' | sed 's/,//')"
 INSERT=$(($FLANK - 2*$READLENGTH))
 echo "Flank, Insert:", $FLANK, $INSERT
      
-# Creando index
+# Generate index file
 bowtie2-build contigs.fa reference.index
 echo "bowtie2-build"
     
-# Bowtie para generar mapping.sam Eliminamos directamente las lineas de cabecera y las que tienen "="
+# Use Bowtie to create mapping.sam
+# Discard header lines and those with "="
 bowtie2 -1 ../R_1.fastq -2 ../R_2.fastq -x reference.index --no-head -p 70 -a | awk '$7!="=" {print $line}' > mapping.sam
 echo "bowtie2"
 
@@ -123,17 +124,17 @@ awk '{split($1, a1, /\_/); print a1[1] "_" a1[2] "_" a1[3] "_" a1[4] "_" a1[5] "
 awk '{split($1, a1, /\_/); print a1[1] "_" a1[2] "_" a1[3] "_" a1[4] "_" a1[5] "_" a1[6] "\t" $2 "\t" $3}' tmpRIP.blast > rip.csv
 awk '{print $1 "\t" $2 "\t"$3}' tmpInc.blast > inc.csv
 
-# Dividimos el fichero contigs.fa en un fichero por cada nodo
+# Split contigs.fa in a file per node
 fastasplit.py
 
-# Generamos los html con la informacion adicional y el fichero reference.csv
-# a partir del fichero blastRefDB.csv que contiene lineas como la siguiente:
+# Generate HTML with additional information and reference.csv file from 
+# blastRefDB.csv that contains lines with the following pattern:
 # NODE_1_length_6166_cov_38.304737	hit	gi|690030267|ref|NC_025100.1|	11531	0.0
 #
-# Para cada html hacemos una llamada como
+# For each HTML, we execute a command like
 # contigInReferenceInfo NODE_1 NC_022648
 # 
-# y para reference.csv hacemos head -1 ~/fna/$ref.fna | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}'
+# and for reference.csv we execute head -1 ~/fna/$ref.fna | awk '{for (i=2; i<NF; i++) printf $i " "; print $NF}'
 rm -f reference.csv
 while read in
 do
@@ -146,22 +147,23 @@ do
 done < blastRefDB.csv
 wait
 
-# Construimos
+# Build the data:
 
-# Tiempo total
+# Total time
 date1=$(date +"%s"); diff=$(($date1-$date0)); echo "$(($diff / 60)):$(($diff % 60))" > go.log
 
-# Copiamos todo lo necesario a la www
+# Copy all the data to the www directory
 cp ../*.req .
 directorio="/media/luis/ADATA/uploads/$unique"
 mkdir $directorio
 chmod 777 $directorio
 mv NODE_* reference.csv red0.csv ???.csv *.req go.log placnet.prod.* tmp*.blast *Logfile.txt $directorio
 chmod 777 $directorio/*
+
+# Send an email to the administrator (optional) and another one to the user
 sendmail.py "LuisVielva@gmail.com" $name $unique
-#sendmail.py "mdtorohernando@gmail.com" $name $unique
 sendmail.py $email $name $unique
 
-# Limpiamos
+# Clean up
 cd /media/luis/ADATA
 rm -rf /media/luis/ADATA/progress/$unique
