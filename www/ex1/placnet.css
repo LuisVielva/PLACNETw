@@ -1,0 +1,160 @@
+.node 
+{
+    stroke: #fff;
+    stroke-width: 1.5px;
+    opacity: 0.75;
+}
+
+.nodeSelected
+{
+    stroke: black;
+    stroke-width: 3px;
+    opacity: 1;
+}
+
+.nodePreSelected
+{
+    stroke: red;
+    stroke-width: 3px;
+    opacity: 1;
+}
+
+.node:hover 
+{
+    opacity: 1;
+}
+
+.node:visited
+{
+    stroke: red;
+}
+
+a
+{
+    cursor: pointer;
+}
+
+a:hover
+{
+    color: darkgray;
+}
+
+.link 
+{
+  stroke: #999;
+  opacity: .5;
+  stroke-width: 3px;
+}
+
+.link:hover
+{
+	opacity: 1;
+}
+
+.linkSelected
+{
+	stroke: black;
+	opacity: 1;
+	stroke-width: 3px;
+}
+
+.linkPreSelected
+{
+	stroke: red;
+	opacity: 1;
+	stroke-width: 3px;
+}
+
+rect.fondo
+{
+	fill: white; 
+}
+
+rect.selection 
+{
+    stroke          : red;
+    stroke-dasharray: 4px;
+    stroke-opacity  : 0.5;
+    stroke-width	: 2;
+    fill            : transparent;
+}
+
+g.button:hover
+{
+	opacity: 0.75;  
+	cursor: pointer;
+}
+
+rect.button
+{
+	fill: #938edc; 
+	stroke: white; 
+	stroke-width: 5;
+	opacity: 0.8;
+}
+
+text.button
+{
+	fill: white;
+	font-family: 'Raleway', Arial, sans-serif;
+	font-weight: bold; 
+	font-size: 1.5em;
+	text-anchor: middle; 
+	alignment-baseline: middle;
+}
+
+#idAdditionalInfo
+{
+        font-family: "Courier New", Courier, monospace;
+}
+
+input[type="number"] 
+{
+   width: 80px;
+}
+
+textarea
+{
+	width: 100%;
+	height: 100%;
+	font-size: 18px;
+	border: none;
+}
+
+textarea.log
+{
+	font-size: 14px;
+	font-family: monospace;
+}
+
+/*
+Naranja: background: #ff7f0e;
+Amarillo: #2ca02c;
+Verde: #bcbd22;
+Azul: rgb(31, 119, 180); 
+*/	
+
+.x-tree-icon-parent 
+{
+    background-image: url('png/azul.png');
+}
+.x-grid-tree-node-expanded .x-tree-icon-parent 
+{
+    background-image: url('png/azul.png');
+}
+.x-tree-icon-parent.rojo
+{
+    background-image: url('png/rojo.png');
+}
+.x-tree-icon-parent.amarillo
+{
+    background-image: url('png/amarillo.png');
+}
+.x-tree-icon-parent.verde
+{
+    background-image: url('png/verde.png');
+}
+.x-grid-row .x-tree-icon-leaf 
+{    
+    background-image: url('png/naranja.png');
+}

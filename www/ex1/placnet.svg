@@ -1,0 +1,7 @@
+<svg id="svg" width="2000" height="2000">
+<rect id="fondo" class="fondo" width="100%" height="100%" onclick="_btnUnselectAll()" />
+<rect id="rectSelection" class="selection" x="0" y="0" width="0" height="0" />
+<g id="svgScale">
+	<g id="gSvg" />
+</g>
+</svg>
