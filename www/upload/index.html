@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PLACNETw</title>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Barrio' rel='stylesheet'>
+    <!--
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Fresca' rel='stylesheet'>
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Audiowide' rel='stylesheet'>
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Special Elite' rel='stylesheet'>
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Monoton' rel='stylesheet'>
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Press Start 2P' rel='stylesheet'>
+    <link type="text/css" href='//fonts.googleapis.com/css?family=Merienda' rel='stylesheet'>
+            font-family: 'Barrio'; font-size: 80px;
+    -->  
+    <link rel="stylesheet" type="text/css" href="upload.css">
+    <style>
+    h1 {
+            font-family: 'Futura';
+            font-size: 65px;
+            color: #BBB;
+            -webkit-text-stroke: 1px #000;
+            text-shadow: 3px 3px 0 #000,
+                         -1px -1px 0 #000,
+                         1px -1px 0 #000,
+                         -1px 1px 0 #000,
+                         1px 1px 0 #000;
+    }
+    </style>
+</head>
+<body>
+    <div id="container" class="container">
+        <div class="center">
+            <div style="position:relative; width:500px; margin:0px 0px 70px 0px;">
+            <img src="upload.jpg" style="width:500px;margin:-10px -0px -70px 0px;">
+            <h1 align="center" style="opacity:0.6;position:absolute;bottom:40px;width:500px;margin:0px 0px 0px 0px;">PLACNETw</h1>
+            </div>
+            <p>For each genome, upload the Illumina read files in the slots below, one for each fastq gzip-compressed read file.</p>
+            <p>As soon as your data is ready, an email will be sent to the provided address, which links to the online processing tool (the online data will remain accessible for one week).</p>
+            <form id="formulario" action="upload.php" method="post" enctype="multipart/form-data">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td width="50%">email:</td>
+                        <td width="100%" align="left"><input width="100%" type="email" name="email" required></td>
+                    </tr>
+                    <tr>
+                        <td width="50%">Id of the job:</td>
+                        <td width="50%" align="left"><input id="name" type="text" name="name" title="Only numbers, letters, hyphens, and underscores are allowed" pattern="[a-zA-Z0-9-_]+" required></td>
+                    </tr>
+                    <tr>
+                        <td width="50%">Read file 1 (.gz)</td>
+                        <td width="50%" align="left"><input type="file" onchange="compruebaCaptcha()" name="readFile1" required></td>
+                    </tr>
+                    <tr>
+                        <td width="50%">Read file 2 (.gz)</td>
+                        <td width="50%" align="left"><input type="file" onchange="compruebaCaptcha()" name="readFile2" required></td>
+                    </tr>
+                    <tr></tr>
+                    <tr>
+                        <td width="50%"></td>
+                        <td width="50%" align="right"><input type="submit" id="submit" value="Upload"></td>
+                    </tr>
+                </table>
+                <div class="g-recaptcha" data-sitekey="6Lf2DR0UAAAAAI7Fspoo3pDd5LdQExhmJD4K3a0g" data-callback="correctCaptcha" data-size="invisible"></div>
+            </form>
+            <div class="progress" style="display:none;">
+                <div class="bar"></div >
+                <div class="percent">0%</div >
+            </div>
+            <p id="result"/>
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+<tr>
+<td> <a align="left" href="https://castillo.dicom.unican.es/placnetw_video">Tutorial video</a> </td>
+<td align="middle"> <a href="https://github.com/LuisVielva/PLACNETw">Source code</a> </td>
+<td align="right"> <a href="/examples/">Examples</a> </td>
+</tr>
+</table>
+        </div>
+    </div>
+    <script src="jquery-3.2.0.min.js"></script>
+    <script src="jquery.form.js"></script>
+    <script src="upload.js"></script>
+</html>
