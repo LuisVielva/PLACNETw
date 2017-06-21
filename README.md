@@ -4,4 +4,4 @@ PLACNET is a graph-based tool for reconstruction of plasmids from next generatio
 
 The script `doit` is the main bash script that executes to check if a request has been received, checks if everything is correct, performs all the calculations, makes the processed data available to the user, and sends a link to the user when everything is ready to use. The script is executed every minute by crontab, and uses the python program `fastasplit.py`; the perl programs `blastRefDB.pl`, and `sam2scaffold.pl`; and the bash script `contigInReferenceInfo`.
 
-The directory `www` has the source code of the web interface
+The directory `www` has the source code of the web interface. The folder `wwww/upload` has the complete source code of the web interface to upload the read files. The folder `www/ex1` has the complete source code of the PLACNETw web interface (the web application used to interact with the graph).
